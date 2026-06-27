@@ -12,6 +12,10 @@ export interface IPage {
   filename: string;
   title: string;
   contentMap: IContentItem[];
+  metaDescription?: string;
+  ogImage?: string;
+  ogTitle?: string;
+  ogDescription?: string;
 }
 
 export interface ISite extends Document {
@@ -40,9 +44,13 @@ const ContentItemSchema = new Schema<IContentItem>(
 
 const PageSchema = new Schema<IPage>(
   {
-    filename:   { type: String, required: true },
-    title:      { type: String, default: '' },
-    contentMap: { type: [ContentItemSchema], default: [] },
+    filename:        { type: String, required: true },
+    title:           { type: String, default: '' },
+    contentMap:      { type: [ContentItemSchema], default: [] },
+    metaDescription: { type: String, default: '' },
+    ogImage:         { type: String, default: '' },
+    ogTitle:         { type: String, default: '' },
+    ogDescription:   { type: String, default: '' },
   },
   { _id: false }
 );

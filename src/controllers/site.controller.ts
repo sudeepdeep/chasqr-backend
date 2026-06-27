@@ -4,7 +4,7 @@ import AdmZip from 'adm-zip';
 import { randomUUID } from 'crypto';
 import { Site, SiteFile } from '../models';
 import { IPage } from '../models/Site';
-import { parseAndInstrumentHTML, applyUpdatesToHTML } from '../services/parser.service';
+import { parseAndInstrumentHTML, applyUpdatesToHTML, applySEOUpdatesToHTML } from '../services/parser.service';
 import { getMimeType } from '../utils/mime';
 import { sendSuccess, sendError } from '../utils/response';
 import { AuthRequest } from '../middleware/auth';
@@ -59,7 +59,7 @@ async function storeFilesAndBuildPages(
 
   for (const f of htmlFiles) {
     const html = f.buffer.toString('utf-8');
-    const { instrumentedHTML, contentMap, title } = parseAndInstrumentHTML(html);
+    const { instrumentedHTML, contentMap, title, metaDescription, ogImage, ogTitle, ogDescription } = parseAndInstrumentHTML(html);
     const instrumentedBuffer = Buffer.from(instrumentedHTML, 'utf-8');
 
     await SiteFile.create({
@@ -70,7 +70,15 @@ async function storeFilesAndBuildPages(
       size: instrumentedBuffer.length,
     });
 
-    pages.push({ filename: f.path, title: title || f.path, contentMap });
+    pages.push({
+      filename: f.path,
+      title: title || f.path,
+      contentMap,
+      metaDescription,
+      ogImage,
+      ogTitle,
+      ogDescription,
+    });
   }
 
   // Save all asset files
@@ -321,6 +329,47 @@ export const deleteSite = async (req: AuthRequest, res: Response): Promise<void>
   await SiteFile.deleteMany({ siteId: site.siteId });
   await site.deleteOne();
   sendSuccess(res, null, 'Site deleted');
+};
+
+// PUT /api/sites/:siteId/seo
+export const updateSEO = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { page: filename, title, metaDescription, ogImage, ogTitle, ogDescription } = req.body;
+  if (!filename) { sendError(res, 'page is required', 400); return; }
+
+  const site = await Site.findOne({ siteId: req.params.siteId as string, userId: req.user!.id });
+  if (!site) { sendError(res, 'Site not found', 404); return; }
+
+  const pageEntry = site.pages.find(p => p.filename === filename);
+  if (!pageEntry) { sendError(res, `Page "${filename}" not found`, 404); return; }
+
+  // Load HTML from MongoDB
+  const siteFile = await SiteFile.findOne({ siteId: site.siteId, path: filename });
+  if (!siteFile) { sendError(res, 'HTML file not found in database', 500); return; }
+
+  // Apply SEO updates to HTML
+  const html = siteFile.content.toString('utf-8');
+  const seoUpdates = {
+    title: title || pageEntry.title,
+    metaDescription: metaDescription !== undefined ? metaDescription : pageEntry.metaDescription,
+    ogImage: ogImage !== undefined ? ogImage : pageEntry.ogImage,
+    ogTitle: ogTitle !== undefined ? ogTitle : pageEntry.ogTitle,
+    ogDescription: ogDescription !== undefined ? ogDescription : pageEntry.ogDescription,
+  };
+
+  const updatedHTML = applySEOUpdatesToHTML(html, seoUpdates);
+  siteFile.content = Buffer.from(updatedHTML, 'utf-8');
+  siteFile.size = siteFile.content.length;
+  await siteFile.save();
+
+  // Update SEO data in Site document
+  pageEntry.title = seoUpdates.title;
+  pageEntry.metaDescription = seoUpdates.metaDescription;
+  pageEntry.ogImage = seoUpdates.ogImage;
+  pageEntry.ogTitle = seoUpdates.ogTitle;
+  pageEntry.ogDescription = seoUpdates.ogDescription;
+  await site.save();
+
+  sendSuccess(res, { site }, 'SEO updated and deployed');
 };
 
 // GET /api/sites/:siteId/analytics

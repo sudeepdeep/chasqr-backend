@@ -10,6 +10,7 @@ import {
   getSite,
   getAnalytics,
   updateContent,
+  updateSEO,
   updateSlug,
   renameSite,
   toggleStatus,
@@ -46,6 +47,7 @@ router.get('/',                getMySites);
 router.get('/:siteId',         getSite);
 router.get('/:siteId/analytics', getAnalytics);
 router.put('/:siteId/content', updateContent);
+router.put('/:siteId/seo',     updateSEO);
 router.put('/:siteId/slug',    updateSlug);
 router.put('/:siteId/name',    renameSite);
 router.put('/:siteId/status',  toggleStatus);

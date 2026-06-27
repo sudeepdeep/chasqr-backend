@@ -34,6 +34,10 @@ export interface ParseResult {
   instrumentedHTML: string;
   contentMap: IContentItem[];
   title: string;
+  metaDescription: string;
+  ogImage: string;
+  ogTitle: string;
+  ogDescription: string;
 }
 
 /**
@@ -45,6 +49,12 @@ export function parseAndInstrumentHTML(html: string): ParseResult {
   const contentMap: IContentItem[] = [];
   const counters: Record<string, number> = {};
   const title = $('title').text().trim() || 'Untitled';
+
+  // Extract SEO metadata
+  const metaDescription = $('meta[name="description"]').attr('content') || '';
+  const ogImage = $('meta[property="og:image"]').attr('content') || '';
+  const ogTitle = $('meta[property="og:title"]').attr('content') || '';
+  const ogDescription = $('meta[property="og:description"]').attr('content') || '';
 
   function addItem(
     baseKey: string,
@@ -88,7 +98,7 @@ export function parseAndInstrumentHTML(html: string): ParseResult {
     addItem(baseKey, baseLabel, text, type, $typedEl);
   });
 
-  return { instrumentedHTML: $.html(), contentMap, title };
+  return { instrumentedHTML: $.html(), contentMap, title, metaDescription, ogImage, ogTitle, ogDescription };
 }
 
 /**
@@ -106,6 +116,43 @@ export function applyUpdatesToHTML(html: string, updates: Record<string, string>
       $el.text(value);
     }
   }
+
+  return $.html();
+}
+
+/**
+ * Apply SEO metadata updates to HTML (title, meta description, OG tags).
+ */
+export function applySEOUpdatesToHTML(
+  html: string,
+  updates: { title?: string; metaDescription?: string; ogImage?: string; ogTitle?: string; ogDescription?: string }
+): string {
+  const $ = cheerio.load(html);
+
+  // Update page title
+  if (updates.title) {
+    let $title = $('title');
+    if ($title.length === 0) {
+      $('head').prepend('<title></title>');
+      $title = $('title');
+    }
+    $title.text(updates.title);
+  }
+
+  // Helper to set meta tag
+  const setMetaTag = (name: string, attr: string, value: string) => {
+    let $meta = $(`meta[${attr}="${name}"]`);
+    if ($meta.length === 0) {
+      $('head').append(`<meta ${attr}="${name}" content="">`);
+      $meta = $(`meta[${attr}="${name}"]`);
+    }
+    $meta.attr('content', value);
+  };
+
+  if (updates.metaDescription) setMetaTag('description', 'name', updates.metaDescription);
+  if (updates.ogImage) setMetaTag('og:image', 'property', updates.ogImage);
+  if (updates.ogTitle) setMetaTag('og:title', 'property', updates.ogTitle);
+  if (updates.ogDescription) setMetaTag('og:description', 'property', updates.ogDescription);
 
   return $.html();
 }
