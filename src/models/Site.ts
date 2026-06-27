@@ -22,7 +22,8 @@ export interface ISite extends Document {
   pages: IPage[];
   status: SiteStatus;
   plan: 'free' | 'paid';
-  visits: number;
+  visits: number;        // total count (kept for backwards compatibility)
+  visitHistory: Date[];  // array of visit timestamps
   created_at: Date;
   updated_at: Date;
 }
@@ -48,14 +49,15 @@ const PageSchema = new Schema<IPage>(
 
 const SiteSchema = new Schema<ISite>(
   {
-    userId:  { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    siteId:  { type: String, required: true, unique: true },
-    slug:    { type: String, required: true, unique: true, lowercase: true, trim: true },
-    name:    { type: String, required: true, trim: true },
-    pages:   { type: [PageSchema], default: [] },
-    status:  { type: String, enum: ['active', 'inactive'], default: 'active' },
-    plan:    { type: String, enum: ['free', 'paid'], default: 'free' },
-    visits:  { type: Number, default: 0 },
+    userId:        { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    siteId:        { type: String, required: true, unique: true },
+    slug:          { type: String, required: true, unique: true, lowercase: true, trim: true },
+    name:          { type: String, required: true, trim: true },
+    pages:         { type: [PageSchema], default: [] },
+    status:        { type: String, enum: ['active', 'inactive'], default: 'active' },
+    plan:          { type: String, enum: ['free', 'paid'], default: 'free' },
+    visits:        { type: Number, default: 0 },
+    visitHistory:  { type: [Date], default: [] },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

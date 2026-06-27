@@ -83,8 +83,14 @@ app.use('/sites/:slug', async (req: Request, res: Response) => {
     return;
   }
 
-  // Increment visits asynchronously
-  Site.updateOne({ _id: site._id }, { $inc: { visits: 1 } }).exec();
+  // Increment visits and track timestamp asynchronously
+  Site.updateOne(
+    { _id: site._id },
+    {
+      $inc: { visits: 1 },
+      $push: { visitHistory: new Date() },
+    }
+  ).exec();
 
   // Determine which file to serve
   const subPath = req.path === '/' ? 'index.html' : req.path.replace(/^\//, '');

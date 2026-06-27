@@ -322,3 +322,38 @@ export const deleteSite = async (req: AuthRequest, res: Response): Promise<void>
   await site.deleteOne();
   sendSuccess(res, null, 'Site deleted');
 };
+
+// GET /api/sites/:siteId/analytics
+export const getAnalytics = async (req: AuthRequest, res: Response): Promise<void> => {
+  const site = await Site.findOne({ siteId: req.params.siteId as string, userId: req.user!.id });
+  if (!site) { sendError(res, 'Site not found', 404); return; }
+
+  // Get last 30 days of visit data
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const recentVisits = site.visitHistory.filter(date => date >= thirtyDaysAgo);
+
+  // Group visits by date (YYYY-MM-DD)
+  const dailyVisits: Record<string, number> = {};
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const dateStr = date.toISOString().split('T')[0];
+    dailyVisits[dateStr] = 0;
+  }
+
+  recentVisits.forEach(date => {
+    const dateStr = date.toISOString().split('T')[0];
+    dailyVisits[dateStr] = (dailyVisits[dateStr] || 0) + 1;
+  });
+
+  // Convert to array for chart
+  const chartData = Object.entries(dailyVisits).map(([date, count]) => ({
+    date,
+    visits: count,
+  }));
+
+  sendSuccess(res, {
+    total: site.visits,
+    last30Days: recentVisits.length,
+    chartData,
+  });
+};

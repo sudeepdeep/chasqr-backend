@@ -8,6 +8,7 @@ import {
   redeployFiles,
   getMySites,
   getSite,
+  getAnalytics,
   updateContent,
   updateSlug,
   renameSite,
@@ -41,8 +42,9 @@ router.post('/upload-files', withFiles(uploadFilesSite),  uploadFilesSite);
 router.put('/:siteId/redeploy-zip',   withZip(redeployZip),   redeployZip);
 router.put('/:siteId/redeploy-files', withFiles(redeployFiles), redeployFiles);
 
-router.get('/',          getMySites);
-router.get('/:siteId',   getSite);
+router.get('/',                getMySites);
+router.get('/:siteId',         getSite);
+router.get('/:siteId/analytics', getAnalytics);
 router.put('/:siteId/content', updateContent);
 router.put('/:siteId/slug',    updateSlug);
 router.put('/:siteId/name',    renameSite);
