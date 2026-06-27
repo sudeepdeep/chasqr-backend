@@ -2,7 +2,7 @@ import { Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import AdmZip from 'adm-zip';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { Site } from '../models';
 import { IPage } from '../models/Site';
 import { parseAndInstrument, applyUpdates } from '../services/parser.service';
@@ -73,7 +73,7 @@ export const uploadZipSite = async (req: AuthRequest, res: Response): Promise<vo
   if (!req.file) { sendError(res, 'No zip file uploaded', 400); return; }
 
   const name = (req.body.name || 'My Site').trim();
-  const siteId = uuidv4().split('-')[0];
+  const siteId = randomUUID().split('-')[0];
 
   const { slug, error: slugError } = await resolveSlug(req.body.slug, siteId);
   if (slugError) { sendError(res, slugError, 400); return; }
@@ -126,7 +126,7 @@ export const uploadFilesSite = async (req: AuthRequest, res: Response): Promise<
 
   const name = (req.body.name || 'My Site').trim();
   const relativePaths: string[] = JSON.parse(req.body.paths || '[]');
-  const siteId = uuidv4().split('-')[0];
+  const siteId = randomUUID().split('-')[0];
 
   const { slug, error: slugError } = await resolveSlug(req.body.slug, siteId);
   if (slugError) { sendError(res, slugError, 400); return; }
