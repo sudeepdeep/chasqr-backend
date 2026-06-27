@@ -400,9 +400,12 @@ export const getAnalytics = async (req: AuthRequest, res: Response): Promise<voi
     visits: count,
   }));
 
+  const dailyAverage = recentVisits.length > 0 ? Number((recentVisits.length / 30).toFixed(2)) : 0;
+
   sendSuccess(res, {
     total: site.visits,
     last30Days: recentVisits.length,
+    dailyAverage,
     chartData,
   });
 };
