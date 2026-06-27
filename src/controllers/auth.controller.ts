@@ -8,6 +8,7 @@ import { sendSuccess, sendError } from '../utils/response';
 import { AuthRequest } from '../middleware/auth';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const formatUser = (user: InstanceType<typeof User>) => ({
   id: user._id,
@@ -160,6 +161,12 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     return;
   }
 
+  if (!process.env.RESEND_API_KEY) {
+    console.error('RESEND_API_KEY not set');
+    sendError(res, 'Email service not configured', 500);
+    return;
+  }
+
   const user = await User.findOne({ email: email.toLowerCase() }).select('+resetPasswordToken +resetPasswordExpires');
   if (!user) {
     // Don't reveal if email exists
@@ -175,10 +182,9 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
 
   // Send email
   const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
-  const resend = new Resend(process.env.RESEND_API_KEY);
 
   try {
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: 'noreply@chasqr.com',
       to: user.email,
       subject: 'Password Reset Request — Chasqr',
@@ -189,12 +195,18 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
         <p style="margin-top:20px; color:#666; font-size:14px;">If you didn't request this, ignore this email.</p>
       `,
     });
-  } catch (err) {
-    console.error('Failed to send reset email:', err);
-    // Don't fail — user might see error but link is valid
-  }
 
-  sendSuccess(res, null, 'If email exists, reset link has been sent');
+    if (result.error) {
+      console.error('Resend error:', result.error);
+      sendError(res, `Failed to send email: ${result.error.message || 'Unknown error'}`, 500);
+      return;
+    }
+
+    sendSuccess(res, null, 'Password reset link sent to your email');
+  } catch (err: any) {
+    console.error('Failed to send reset email:', err);
+    sendError(res, `Email service error: ${err.message || 'Failed to send email'}`, 500);
+  }
 };
 
 export const resetPassword = async (req: Request, res: Response): Promise<void> => {
