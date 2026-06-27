@@ -4,6 +4,8 @@ import { uploadZip, uploadFiles } from '../middleware/upload';
 import {
   uploadZipSite,
   uploadFilesSite,
+  redeployZip,
+  redeployFiles,
   getMySites,
   getSite,
   updateContent,
@@ -17,26 +19,34 @@ const router = Router();
 
 router.use(protect);
 
-router.post('/upload-zip', (req, res, next) => {
+const withZip = (handler: any) => (req: any, res: any, next: any) => {
   uploadZip(req, res, (err) => {
     if (err) { res.status(400).json({ success: false, message: err.message }); return; }
     next();
   });
-}, uploadZipSite);
+};
 
-router.post('/upload-files', (req, res, next) => {
+const withFiles = (handler: any) => (req: any, res: any, next: any) => {
   uploadFiles(req, res, (err) => {
     if (err) { res.status(400).json({ success: false, message: err.message }); return; }
     next();
   });
-}, uploadFilesSite);
+};
 
-router.get('/', getMySites);
-router.get('/:siteId', getSite);
+// Initial deploy
+router.post('/upload-zip',   withZip(uploadZipSite),     uploadZipSite);
+router.post('/upload-files', withFiles(uploadFilesSite),  uploadFilesSite);
+
+// Redeploy existing site
+router.put('/:siteId/redeploy-zip',   withZip(redeployZip),   redeployZip);
+router.put('/:siteId/redeploy-files', withFiles(redeployFiles), redeployFiles);
+
+router.get('/',          getMySites);
+router.get('/:siteId',   getSite);
 router.put('/:siteId/content', updateContent);
-router.put('/:siteId/slug', updateSlug);
-router.put('/:siteId/name', renameSite);
-router.put('/:siteId/status', toggleStatus);
-router.delete('/:siteId', deleteSite);
+router.put('/:siteId/slug',    updateSlug);
+router.put('/:siteId/name',    renameSite);
+router.put('/:siteId/status',  toggleStatus);
+router.delete('/:siteId',      deleteSite);
 
 export default router;

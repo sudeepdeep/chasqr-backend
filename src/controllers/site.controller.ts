@@ -161,6 +161,72 @@ export const uploadFilesSite = async (req: AuthRequest, res: Response): Promise<
   sendSuccess(res, { site, url: `/sites/${slug}/` }, 'Site deployed successfully', 201);
 };
 
+// PUT /api/sites/:siteId/redeploy-zip
+export const redeployZip = async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!req.file) { sendError(res, 'No zip file uploaded', 400); return; }
+
+  const site = await Site.findOne({ siteId: req.params.siteId as string, userId: req.user!.id });
+  if (!site) { sendError(res, 'Site not found', 404); return; }
+
+  let files: { path: string; buffer: Buffer }[] = [];
+
+  try {
+    const zip = new AdmZip(req.file.buffer);
+    const entries = zip.getEntries();
+
+    const rootDirs = new Set(entries.map(e => e.entryName.split('/')[0]));
+    const hasSingleRoot = rootDirs.size === 1 && entries.every(e => e.entryName.includes('/'));
+    const stripPrefix = hasSingleRoot ? [...rootDirs][0] + '/' : '';
+
+    for (const entry of entries) {
+      if (entry.isDirectory) continue;
+      let relativePath = entry.entryName;
+      if (stripPrefix && relativePath.startsWith(stripPrefix)) {
+        relativePath = relativePath.slice(stripPrefix.length);
+      }
+      relativePath = sanitizePath(relativePath);
+      if (!relativePath) continue;
+      files.push({ path: relativePath, buffer: entry.getData() });
+    }
+  } catch {
+    sendError(res, 'Failed to extract zip file', 400);
+    return;
+  }
+
+  const hasIndex = files.some(f => f.path === 'index.html');
+  if (!hasIndex) { sendError(res, 'No index.html found in zip.', 400); return; }
+
+  const pages = await storeFilesAndBuildPages(site.siteId, files);
+  site.pages = pages;
+  await site.save();
+
+  sendSuccess(res, { site }, 'Site redeployed successfully');
+};
+
+// PUT /api/sites/:siteId/redeploy-files
+export const redeployFiles = async (req: AuthRequest, res: Response): Promise<void> => {
+  const uploadedFiles = req.files as Express.Multer.File[];
+  if (!uploadedFiles?.length) { sendError(res, 'No files uploaded', 400); return; }
+
+  const site = await Site.findOne({ siteId: req.params.siteId as string, userId: req.user!.id });
+  if (!site) { sendError(res, 'Site not found', 404); return; }
+
+  const relativePaths: string[] = JSON.parse(req.body.paths || '[]');
+  const files = uploadedFiles.map((f, i) => ({
+    path: sanitizePath(relativePaths[i] || f.originalname),
+    buffer: f.buffer,
+  }));
+
+  const hasIndex = files.some(f => f.path === 'index.html');
+  if (!hasIndex) { sendError(res, 'No index.html found.', 400); return; }
+
+  const pages = await storeFilesAndBuildPages(site.siteId, files);
+  site.pages = pages;
+  await site.save();
+
+  sendSuccess(res, { site }, 'Site redeployed successfully');
+};
+
 // GET /api/sites
 export const getMySites = async (req: AuthRequest, res: Response): Promise<void> => {
   const sites = await Site.find({ userId: req.user!.id }).sort({ created_at: -1 });
