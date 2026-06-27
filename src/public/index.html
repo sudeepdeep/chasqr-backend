@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chasqr — Connect WhatsApp</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      padding: 20px;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    .logo span { color: #25d366; }
+
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 16px;
+      padding: 32px;
+    }
+
+    .card h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      color: #888;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .step-num {
+      width: 24px;
+      height: 24px;
+      background: #25d366;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #000;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-text { font-size: 14px; color: #ccc; line-height: 1.5; }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus { border-color: #25d366; }
+    input::placeholder { color: #555; }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-whatsapp {
+      background: #25d366;
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .btn-api {
+      background: #2a2a2a;
+      color: #fff;
+      border: 1px solid #333;
+    }
+
+    .divider {
+      text-align: center;
+      color: #555;
+      font-size: 12px;
+      margin: 16px 0;
+      position: relative;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 42%;
+      height: 1px;
+      background: #2a2a2a;
+    }
+
+    .divider::before { left: 0; }
+    .divider::after  { right: 0; }
+
+    .status-box {
+      display: none;
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .status-box.success {
+      background: #0d2e1a;
+      border: 1px solid #25d366;
+      color: #25d366;
+      display: block;
+    }
+
+    .status-box.error {
+      background: #2e0d0d;
+      border: 1px solid #e74c3c;
+      color: #e74c3c;
+      display: block;
+    }
+
+    .status-box.pending {
+      background: #1a1a0d;
+      border: 1px solid #f39c12;
+      color: #f39c12;
+      display: block;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .auth-section {
+      margin-bottom: 24px;
+      padding: 16px;
+      background: #252525;
+      border-radius: 10px;
+      border: 1px solid #333;
+    }
+
+    .auth-section label { color: #aaa; font-size: 12px; }
+
+    .token-display {
+      font-size: 11px;
+      color: #555;
+      word-break: break-all;
+      margin-top: 4px;
+    }
+
+    .connected-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #0d2e1a;
+      border: 1px solid #25d366;
+      color: #25d366;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="logo">
+    <h1>chas<span>qr</span></h1>
+  </div>
+
+  <!-- Auth Section -->
+  <div class="card" id="authCard">
+    <h2>Login to Chasqr</h2>
+    <p>Enter your credentials to get your JWT token for testing.</p>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="john@xyz.com" />
+    </div>
+
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" />
+    </div>
+
+    <button class="btn btn-whatsapp" onclick="login()">Login</button>
+
+    <div id="authStatus" class="status-box"></div>
+  </div>
+
+  <!-- WhatsApp Connect Section (shown after login) -->
+  <div class="card" id="waCard" style="display:none; margin-top: 20px;">
+    <h2>Connect WhatsApp</h2>
+    <p>Connect your WhatsApp Business number. Your customers will receive messages from your business name.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text">Enter your business display name</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text">Click "Connect via Facebook" and log in</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text">Select your WhatsApp Business Account</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text">We handle the rest — approval takes 1-3 days</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Business Display Name (shown on WhatsApp)</label>
+      <input type="text" id="displayName" placeholder="XYZ Store" />
+    </div>
+
+    <!-- Real Meta Embedded Signup Button -->
+    <button class="btn btn-whatsapp" id="fbBtn" onclick="launchEmbeddedSignup()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.994 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+      </svg>
+      Connect via Facebook
+    </button>
+
+    <div class="divider">or test without Facebook</div>
+
+    <!-- Simulated connect for testing -->
+    <button class="btn btn-api" onclick="simulateConnect()">
+      Simulate Connect (Dev Mode)
+    </button>
+
+    <div id="waStatus" class="status-box"></div>
+
+    <!-- Channel status display -->
+    <div id="channelStatus" style="margin-top: 20px; display: none;">
+      <div class="form-group">
+        <label>Current Channel Status</label>
+        <div id="channelStatusContent"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Meta Facebook SDK -->
+<script>
+  window.fbAsyncInit = function () {
+    FB.init({
+      appId:   document.getElementById('metaAppId')?.value || 'YOUR_META_APP_ID',
+      cookie:  true,
+      xfbml:  true,
+      version: 'v19.0',
+    });
+  };
+</script>
+<script id="metaAppId" async defer src="https://connect.facebook.net/en_US/sdk.js"></script>
+
+<script>
+  const API = 'http://localhost:5000';
+  let token = localStorage.getItem('chasqr_token') || '';
+
+  // Auto-load if token exists
+  window.onload = async () => {
+    if (token) {
+      showWACard();
+      loadChannelStatus();
+    }
+  };
+
+  // ─── Auth ───────────────────────────────────────────────
+  async function login() {
+    const email    = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const status   = document.getElementById('authStatus');
+
+    if (!email || !password) {
+      showStatus(status, 'error', 'Email and password required');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        showStatus(status, 'error', data.message);
+        return;
+      }
+
+      token = data.data.token;
+      localStorage.setItem('chasqr_token', token);
+
+      showStatus(status, 'success', `Welcome back, ${data.data.user.name}!`);
+      setTimeout(() => {
+        showWACard();
+        loadChannelStatus();
+      }, 800);
+
+    } catch {
+      showStatus(status, 'error', 'Server error — is the backend running?');
+    }
+  }
+
+  function showWACard() {
+    document.getElementById('waCard').style.display = 'block';
+  }
+
+  // ─── WhatsApp Embedded Signup ────────────────────────────
+  function launchEmbeddedSignup() {
+    const displayName = document.getElementById('displayName').value.trim();
+    const status      = document.getElementById('waStatus');
+
+    if (!displayName) {
+      showStatus(status, 'error', 'Enter your business display name first');
+      return;
+    }
+
+    FB.login(
+      async (response) => {
+        if (response.authResponse?.code) {
+          showStatus(status, 'pending', '⏳ Connecting WhatsApp...');
+          await connectToBackend(response.authResponse.code, displayName);
+        } else {
+          showStatus(status, 'error', 'Facebook login was cancelled or failed');
+        }
+      },
+      {
+        scope:          'whatsapp_business_management,whatsapp_business_messaging',
+        response_type:  'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {},
+          featureType: '',
+          sessionInfoVersion: '3',
+        },
+      }
+    );
+  }
+
+  // ─── Simulate (Dev Mode) ─────────────────────────────────
+  async function simulateConnect() {
+    const displayName = document.getElementById('displayName').value.trim();
+    const status      = document.getElementById('waStatus');
+
+    if (!displayName) {
+      showStatus(status, 'error', 'Enter your business display name first');
+      return;
+    }
+
+    showStatus(status, 'pending', '⏳ Simulating WhatsApp connection...');
+    await connectToBackend('simulated_code', displayName);
+  }
+
+  // ─── Connect to Backend ───────────────────────────────────
+  async function connectToBackend(auth_code, display_name) {
+    const status = document.getElementById('waStatus');
+
+    try {
+      const res = await fetch(`${API}/api/channels/whatsapp/connect`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ auth_code, display_name }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        showStatus(status, 'pending',
+          `✓ WhatsApp connected!\n\n` +
+          `Status: Pending Meta approval\n` +
+          `Display name: ${display_name}\n` +
+          `${data.data.simulated ? '(Simulated — dev mode)' : 'Meta will review in 1-3 days.'}`
+        );
+        loadChannelStatus();
+      } else {
+        showStatus(status, 'error', data.message);
+      }
+    } catch {
+      showStatus(status, 'error', 'Failed to connect — check backend');
+    }
+  }
+
+  // ─── Load Channel Status ──────────────────────────────────
+  async function loadChannelStatus() {
+    try {
+      const res = await fetch(`${API}/api/channels/status`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      const data = await res.json();
+      if (!data.success) return;
+
+      const ch = data.data.channels;
+      const el = document.getElementById('channelStatusContent');
+
+      el.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+          ${channelBadge('WhatsApp', ch.whatsapp.status, ch.whatsapp.phone_number)}
+          ${channelBadge('SMS', ch.sms.status, ch.sms.sender_id)}
+          ${channelBadge('Email', ch.email.status, ch.email.domain)}
+        </div>
+      `;
+
+      document.getElementById('channelStatus').style.display = 'block';
+    } catch { /* silent */ }
+  }
+
+  function channelBadge(name, status, detail) {
+    const colors = {
+      active:        '#25d366',
+      pending_setup: '#f39c12',
+      not_connected: '#555',
+      suspended:     '#e74c3c',
+    };
+
+    const color  = colors[status] || '#555';
+    const detail_text = detail ? ` · ${detail}` : '';
+
+    return `
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+        <span style="font-size:13px;color:#ccc;">${name}</span>
+        <span style="font-size:12px;color:#555;">${status.replace('_', ' ')}${detail_text}</span>
+      </div>
+    `;
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────
+  function showStatus(el, type, msg) {
+    el.className = `status-box ${type}`;
+    el.style.display = 'block';
+    el.style.whiteSpace = 'pre-line';
+    el.textContent = msg;
+  }
+
+  // Enter key on password
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') login();
+  });
+</script>
+
+</body>
+</html>
