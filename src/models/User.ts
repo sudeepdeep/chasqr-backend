@@ -10,6 +10,8 @@ export interface IUser extends Document {
   plan: UserPlan;
   status: UserStatus;
   email_verified: boolean;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   created_at: Date;
   updated_at: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -24,6 +26,8 @@ const UserSchema = new Schema<IUser>(
     plan: { type: String, enum: ['free', 'paid'], default: 'free' },
     status: { type: String, enum: ['active', 'suspended'], default: 'active' },
     email_verified: { type: Boolean, default: false },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },

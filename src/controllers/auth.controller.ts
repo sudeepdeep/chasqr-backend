@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
+import { randomBytes } from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
+import { Resend } from 'resend';
 import { User } from '../models';
 import { signToken } from '../utils/jwt';
 import { sendSuccess, sendError } from '../utils/response';
@@ -149,4 +151,81 @@ export const changePassword = async (req: AuthRequest, res: Response): Promise<v
   await user.save();
 
   sendSuccess(res, null, 'Password changed successfully');
+};
+
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  const { email } = req.body;
+  if (!email) {
+    sendError(res, 'Email is required');
+    return;
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase() }).select('+resetPasswordToken +resetPasswordExpires');
+  if (!user) {
+    // Don't reveal if email exists
+    sendSuccess(res, null, 'If email exists, reset link has been sent');
+    return;
+  }
+
+  // Generate reset token
+  const token = randomBytes(32).toString('hex');
+  user.resetPasswordToken = token;
+  user.resetPasswordExpires = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+  await user.save();
+
+  // Send email
+  const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
+  try {
+    await resend.emails.send({
+      from: 'noreply@chasqr.com',
+      to: user.email,
+      subject: 'Password Reset Request — Chasqr',
+      html: `
+        <h2>Password Reset</h2>
+        <p>Click the link below to reset your password. This link expires in 1 hour.</p>
+        <a href="${resetUrl}" style="display:inline-block; background:#2563eb; color:white; padding:10px 20px; border-radius:6px; text-decoration:none; font-weight:600;">Reset Password</a>
+        <p style="margin-top:20px; color:#666; font-size:14px;">If you didn't request this, ignore this email.</p>
+      `,
+    });
+  } catch (err) {
+    console.error('Failed to send reset email:', err);
+    // Don't fail — user might see error but link is valid
+  }
+
+  sendSuccess(res, null, 'If email exists, reset link has been sent');
+};
+
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  const { token, email, new_password } = req.body;
+
+  if (!token || !email || !new_password) {
+    sendError(res, 'token, email, and new_password are required');
+    return;
+  }
+
+  if (new_password.length < 8) {
+    sendError(res, 'Password must be at least 8 characters');
+    return;
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase() }).select('+resetPasswordToken +resetPasswordExpires');
+  if (!user || !user.resetPasswordToken || !user.resetPasswordExpires) {
+    sendError(res, 'Invalid or expired reset link', 400);
+    return;
+  }
+
+  if (user.resetPasswordToken !== token || user.resetPasswordExpires < new Date()) {
+    sendError(res, 'Invalid or expired reset link', 400);
+    return;
+  }
+
+  // Update password and clear reset fields
+  user.password = new_password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+
+  sendSuccess(res, null, 'Password reset successfully');
 };
