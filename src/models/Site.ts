@@ -28,6 +28,7 @@ export interface ISite extends Document {
   plan: 'free' | 'paid';
   visits: number;        // total count (kept for backwards compatibility)
   visitHistory: Date[];  // array of visit timestamps
+  customDomain?: string; // optional custom domain (e.g., user.com)
   created_at: Date;
   updated_at: Date;
 }
