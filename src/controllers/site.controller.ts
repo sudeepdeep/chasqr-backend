@@ -372,6 +372,44 @@ export const updateSEO = async (req: AuthRequest, res: Response): Promise<void> 
   sendSuccess(res, { site }, 'SEO updated and deployed');
 };
 
+// PUT /api/sites/:siteId/custom-domain
+export const setCustomDomain = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { domain } = req.body as { domain: string };
+  if (!domain?.trim()) { sendError(res, 'domain is required', 400); return; }
+
+  const cleaned = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+  // Basic domain format check
+  if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/.test(cleaned)) {
+    sendError(res, 'Invalid domain format', 400); return;
+  }
+
+  // Make sure the domain is not already taken by another site
+  const conflict = await Site.findOne({ customDomain: cleaned });
+  if (conflict && conflict.siteId !== req.params.siteId) {
+    sendError(res, 'This domain is already connected to another site', 409); return;
+  }
+
+  const site = await Site.findOneAndUpdate(
+    { siteId: req.params.siteId as string, userId: req.user!.id },
+    { customDomain: cleaned },
+    { new: true }
+  );
+  if (!site) { sendError(res, 'Site not found', 404); return; }
+  sendSuccess(res, { site }, 'Custom domain saved');
+};
+
+// DELETE /api/sites/:siteId/custom-domain
+export const removeCustomDomain = async (req: AuthRequest, res: Response): Promise<void> => {
+  const site = await Site.findOneAndUpdate(
+    { siteId: req.params.siteId as string, userId: req.user!.id },
+    { $unset: { customDomain: '' } },
+    { new: true }
+  );
+  if (!site) { sendError(res, 'Site not found', 404); return; }
+  sendSuccess(res, { site }, 'Custom domain removed');
+};
+
 // GET /api/sites/:siteId/analytics
 export const getAnalytics = async (req: AuthRequest, res: Response): Promise<void> => {
   const site = await Site.findOne({ siteId: req.params.siteId as string, userId: req.user!.id });

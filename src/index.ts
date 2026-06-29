@@ -41,6 +41,39 @@ app.use('/api/auth', authRoutes);
 app.use('/api/sites', siteRoutes);
 app.use('/api/admin', adminRoutes);
 
+// ── Custom domain handler ─────────────────────────────────────────────────────
+const BACKEND_HOSTS = new Set([
+  'localhost',
+  'api.chasqr.com',
+  'chasqr.com',
+  'www.chasqr.com',
+]);
+
+app.use(async (req: Request, res: Response, next) => {
+  const host = (req.headers.host || '').split(':')[0].toLowerCase();
+  if (!host || BACKEND_HOSTS.has(host)) return next();
+
+  // This request came in via a custom domain — serve the matching site
+  const site = await Site.findOne({ customDomain: host, status: 'active' });
+  if (!site) {
+    res.status(404).send('<h1>404 — Site not found</h1>');
+    return;
+  }
+
+  Site.updateOne({ _id: site._id }, { $inc: { visits: 1 }, $push: { visitHistory: new Date() } }).exec();
+
+  const subPath = req.path === '/' ? 'index.html' : req.path.replace(/^\//, '');
+  const safePath = path.normalize(subPath).replace(/^(\.\.[\\/])+/, '');
+
+  let file = await SiteFile.findOne({ siteId: site.siteId, path: safePath });
+  if (!file) file = await SiteFile.findOne({ siteId: site.siteId, path: 'index.html' });
+  if (!file) { res.status(404).send('<h1>404 — File not found</h1>'); return; }
+
+  res.setHeader('Content-Type', file.mimeType);
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(file.content);
+});
+
 // ── Serve deployed sites from MongoDB ────────────────────────────────────────
 app.use('/sites/:slug', async (req: Request, res: Response) => {
   const slug = req.params.slug as string;

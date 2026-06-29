@@ -15,6 +15,8 @@ import {
   renameSite,
   toggleStatus,
   deleteSite,
+  setCustomDomain,
+  removeCustomDomain,
 } from '../controllers/site.controller';
 
 const router = Router();
@@ -50,7 +52,9 @@ router.put('/:siteId/content', updateContent);
 router.put('/:siteId/seo',     updateSEO);
 router.put('/:siteId/slug',    updateSlug);
 router.put('/:siteId/name',    renameSite);
-router.put('/:siteId/status',  toggleStatus);
-router.delete('/:siteId',      deleteSite);
+router.put('/:siteId/status',        toggleStatus);
+router.put('/:siteId/custom-domain', setCustomDomain);
+router.delete('/:siteId/custom-domain', removeCustomDomain);
+router.delete('/:siteId',            deleteSite);
 
 export default router;

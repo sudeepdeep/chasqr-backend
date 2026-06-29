@@ -67,6 +67,7 @@ const SiteSchema = new Schema<ISite>(
     plan:          { type: String, enum: ['free', 'paid'], default: 'free' },
     visits:        { type: Number, default: 0 },
     visitHistory:  { type: [Date], default: [] },
+    customDomain:  { type: String, sparse: true },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
@@ -75,5 +76,6 @@ const SiteSchema = new Schema<ISite>(
 
 SiteSchema.index({ userId: 1 });
 SiteSchema.index({ status: 1 });
+SiteSchema.index({ customDomain: 1 }, { sparse: true });
 
 export default mongoose.model<ISite>('Site', SiteSchema);
